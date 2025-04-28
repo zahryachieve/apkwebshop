@@ -114,20 +114,36 @@ public function checkout(Request $request)
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update($itemId, Request $request)
     {
-        $item = CartItem::find($id);
-    
-        if ($item) {
-            $item->product_name = $request->product_name;
-            $item->quantity = $request->quantity;
-            $item->total_price = $request->total_price;
-            $item->save();
-    
-            return response()->json(['success' => true]);
+        // Validasi input
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1', // Pastikan quantity adalah integer dan minimal 1
+            'total_price' => 'required|numeric|min:1', // Total harga harus lebih dari 0
+        ]);
+
+        try {
+            // Temukan item berdasarkan ID
+            $cartItem = CartItem::findOrFail($itemId);
+
+            // Update quantity dan total price
+            $cartItem->quantity = $validated['quantity'];
+            $cartItem->total_price = $validated['total_price'];
+
+            // Simpan perubahan ke database
+            $cartItem->save();
+
+            // Mengembalikan response JSON dengan status sukses
+            return response()->json([
+                'message' => 'Keranjang berhasil diperbarui.',
+                'data' => $cartItem,
+            ]);
+        } catch (\Exception $e) {
+            // Menangani error jika item tidak ditemukan atau terjadi kesalahan lainnya
+            return response()->json([
+                'message' => 'Gagal memperbarui keranjang: ' . $e->getMessage(),
+            ], 500);
         }
-    
-        return response()->json(['success' => false, 'message' => 'Item tidak ditemukan'], 404);
     }
     
 

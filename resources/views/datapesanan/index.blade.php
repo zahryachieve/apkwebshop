@@ -44,102 +44,111 @@
                                         </div>
                                     </div>
                                     <div class="table-responsive table-responsive-data2">
-                                        <table class="table table-data2">
-                                            <thead>
-                                            <tr>
-                                                <th>No</th>
-                                                <th>Nama Produk</th>
-                                                <th>Jumlah</th>
-                                                <th>Total Harga</th>
-                                                <th>Tanggal</th>
-                                                <th>Opsi</th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
-                                            @forelse($cartItems as $index => $item)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $item->product_name }}</td>
-                                                <td>{{ $item->quantity }}</td>
-                                                <td>Rp {{ number_format($item->total_price, 0, ',', '.') }}</td>
-                                                <td>{{ $item->created_at }}</td>
-                                                <td>
-                                                    <div class="table-data-feature">
-                                                    <button class="item btn-edit" data-id="{{ $item->id }}" data-product="{{ $item->product_name }}" data-quantity="{{ $item->quantity }}" data-total="{{ $item->total_price }}" data-toggle="tooltip" data-placement="top" title="Edit">
-                                                        <i class="zmdi zmdi-edit"></i>
-                                                    </button>
-                                                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <table class="table table-data2">
+        <thead>
+        <tr>
+            <th>No</th>
+            <th>Nama Produk</th>
+            <th>Jumlah</th>
+            <th>Total Harga</th>
+            <th>Tanggal</th>
+            <th>Opsi</th>
+        </tr>
+        </thead>
+        <tbody>
+        @forelse($cartItems as $index => $item)
+        <tr>
+            <td>{{ $index + 1 }}</td>
+            <td>{{ $item->product_name }}</td>
+            <td id="quantity-{{ $item->id }}">{{ $item->quantity }}</td>
+            <td id="total-price-{{ $item->id }}">Rp {{ number_format($item->total_price, 0, ',', '.') }}</td>
+            <td>{{ $item->created_at }}</td>
+            <td>
+                <div class="table-data-feature">
+                    <!-- Tombol minus dan plus -->
+                    <button class="item btn-minus" data-id="{{ $item->id }}" data-price="{{ $item->price }}" data-action="minus" title="Kurangi">
+    <i class="zmdi zmdi-minus"></i>
+</button>
+<button class="item btn-plus" data-id="{{ $item->id }}" data-price="{{ $item->price }}" data-action="plus" title="Tambah">
+    <i class="zmdi zmdi-plus"></i>
+</button>
 
-                                                   <script>
-                                                        document.addEventListener('DOMContentLoaded', function () {
-                                                        const editButtons = document.querySelectorAll('.btn-edit');
+                </div>
+            </td>
+        </tr>
+        @empty
+        <tr>
+            <td colspan="4" class="text-center">Keranjang kamu kosong</td>
+        </tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
 
-                                                        editButtons.forEach(button => {
-                                                            button.addEventListener('click', function () {
-                                                                const itemId = this.dataset.id;
-                                                                const productName = this.dataset.product;
-                                                                const quantity = this.dataset.quantity;
-                                                                const totalPrice = this.dataset.total;
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const minusButtons = document.querySelectorAll('.btn-minus');
+    const plusButtons = document.querySelectorAll('.btn-plus');
 
-                                                                Swal.fire({
-                                                                    title: 'Edit Produk',
-                                                                    html: `
-                                                                        <input type="text" id="product-name" class="swal2-input" value="${productName}" placeholder="Nama Produk">
-                                                                        <input type="number" id="quantity" class="swal2-input" value="${quantity}" placeholder="Jumlah" min="1">
-                                                                        <input type="number" id="total-price" class="swal2-input" value="${totalPrice}" placeholder="Total Harga" min="1" disabled>
-                                                                    `,
-                                                                    showCancelButton: true,
-                                                                    confirmButtonText: 'Simpan Perubahan',
-                                                                    preConfirm: () => {
-                                                                        const updatedProductName = document.getElementById('product-name').value;
-                                                                        const updatedQuantity = document.getElementById('quantity').value;
-                                                                        const updatedTotalPrice = document.getElementById('total-price').value;
+    console.log(minusButtons);  // Periksa apakah tombol minus ada
+    console.log(plusButtons);   // Periksa apakah tombol plus ada
+    
+    // Fungsi untuk mengupdate quantity dan harga
+    function updateCart(itemId, quantity, totalPrice) {
+        fetch(`/cart/update/${itemId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                quantity: quantity,
+                total_price: totalPrice
+            })
+        }).then(res => {
+            if (!res.ok) {
+                throw new Error('Gagal menyimpan perubahan');
+            }
+            return res.json();
+        }).then(data => {
+            document.getElementById(`quantity-${itemId}`).textContent = quantity;
+            document.getElementById(`total-price-${itemId}`).textContent = `Rp ${totalPrice.toLocaleString('id-ID')}`;
+        }).catch(error => {
+            Swal.fire('Gagal!', error.message, 'error');
+        });
+    }
 
-                                                                        if (!updatedProductName || !updatedQuantity || !updatedTotalPrice) {
-                                                                            Swal.showValidationMessage('Semua kolom harus diisi!');
-                                                                            return false;
-                                                                        }
+    // Event listener untuk tombol minus
+    minusButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const itemId = this.dataset.id;
+            let quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
+            const price = parseInt(this.dataset.price);
 
-                                                                        return fetch(`/cart/update/${itemId}`, {
-                                                                            method: 'PUT',
-                                                                            headers: {
-                                                                                'Content-Type': 'application/json',
-                                                                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                                                            },
-                                                                            body: JSON.stringify({
-                                                                                product_name: updatedProductName,
-                                                                                quantity: updatedQuantity,
-                                                                                total_price: updatedTotalPrice
-                                                                            })
-                                                                        }).then(res => {
-                                                                            if (!res.ok) {
-                                                                                throw new Error('Gagal menyimpan perubahan');
-                                                                            }
-                                                                            return res.json();
-                                                                        }).then(data => {
-                                                                            Swal.fire('Berhasil!', 'Produk berhasil diperbarui.', 'success');
-                                                                            location.reload(); // reload agar data diperbarui
-                                                                        }).catch(error => {
-                                                                            Swal.fire('Gagal!', error.message, 'error');
-                                                                        });
-                                                                    }
-                                                                });
-                                                            });
-                                                        });
-                                                    });
+            if (quantity > 1) { // Pastikan quantity tidak menjadi kurang dari 1
+                quantity--;
+                const totalPrice = quantity * price;
+                updateCart(itemId, quantity, totalPrice);
+            }
+        });
+    });
 
-                                                    </script>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            @empty
-                                            <tr>
-                                                <td colspan="4" class="text-center">Keranjang kamu kosong</td>
-                                            </tr>
-                                            @endforelse
-                                        </tbody>
-                                        </table>
-                                    </div>
+    // Event listener untuk tombol plus
+    plusButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const itemId = this.dataset.id;
+            let quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
+            const price = parseInt(this.dataset.price);
+
+            quantity++;
+            const totalPrice = quantity * price;
+            updateCart(itemId, quantity, totalPrice);
+        });
+    });
+});
+
+</script>
+
                                     <!-- END DATA TABLE -->
                                 </div>
                             </div>  
